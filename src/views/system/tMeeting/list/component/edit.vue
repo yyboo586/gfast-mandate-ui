@@ -10,7 +10,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="会议ID" prop="roomNumber">
-              <el-input v-model="formData.roomNumber" readonly style="pointer-events: none; background-color: #f5f7fa;" />
+              <el-input v-model="formData.roomNumber" disabled style="pointer-events: none; background-color: #f5f7fa;" />
             </el-form-item>
           </el-col>
 

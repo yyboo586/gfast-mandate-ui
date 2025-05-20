@@ -194,9 +194,9 @@
           <el-table-column label="会议模式" align="center" prop="Mode"
             min-width="150px"            
              />          
-          <el-table-column label="漫游距离" align="center" prop="Distance"
+          <!-- <el-table-column label="漫游距离" align="center" prop="Distance"
             min-width="150px"            
-             />          
+             />           -->
           <!-- <el-table-column label="会议类型" align="center" prop="Type"
             min-width="150px"            
              />           -->
@@ -227,7 +227,7 @@
                 <span>{{ proxy.parseTime(scope.row.endTime, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
             </template>
           </el-table-column>         -->
-          <el-table-column label="操作" align="center" class-name="small-padding" min-width="220px" fixed="right">
+          <el-table-column label="操作" align="center" class-name="small-padding" min-width="320px" fixed="right">
             <template #default="scope">            
               <el-button
                 type="primary"
@@ -244,9 +244,15 @@
               <el-button
                 type="primary"
                 link
+                @click="handleFileList(scope.row)"
+                v-auth="'api/v1/system/online_meeting/meetings/file_list'"
+              ><el-icon><ele-View /></el-icon>文件列表</el-button>
+              <el-button
+                type="primary"
+                link
                 @click="handleDelete(scope.row)"
                 v-auth="'api/v1/system/online_meeting/meeting'"
-              ><el-icon><ele-DeleteFilled /></el-icon>删除</el-button>
+              ><el-icon><ele-DeleteFilled /></el-icon>删除会议</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -266,13 +272,10 @@
     ></ApiV1SystemTMeetingEdit>
     <ApiV1SystemTMeetingDetail
       ref="detailRef"      
-    ></ApiV1SystemTMeetingDetail>   
-    <!-- <ApiV1SystemTMeetingEdit 
-    @onclose-dialog="()=>{
-      initTableData();
-    }"
-      ref="editRef"
-    ></ApiV1SystemTMeetingEdit>  -->
+    ></ApiV1SystemTMeetingDetail>
+    <ApiV1SystemTMeetingFileList 
+      ref="fileListRef"
+    ></ApiV1SystemTMeetingFileList>
   </div>
 </template>
 <script setup lang="ts">
@@ -294,13 +297,15 @@ import {
 } from "/@/views/system/tMeeting/list/component/model"
 import ApiV1SystemTMeetingDetail from "/@/views/system/tMeeting/list/component/detail.vue"
 import ApiV1SystemTMeetingEdit from "/@/views/system/tMeeting/list/component/edit.vue"
+import ApiV1SystemTMeetingFileList from "/@/views/system/tMeeting/list/component/filelist.vue";
 
-defineOptions({ name: "apiV1SystemTMeetingList"})
+defineOptions({ name: "apiV1SystemTMeetingList" })
 const {proxy} = <any>getCurrentInstance()
 const loading = ref(false)
 const queryRef = ref()
 const editRef = ref();
 const detailRef = ref();
+const fileListRef = ref();
 // 是否显示所有搜索选项
 const showAll =  ref(false)
 // 非单个禁用
@@ -362,15 +367,29 @@ const resetQuery = (formEl: FormInstance | undefined) => {
     tMeetingList()
 };
 // 获取列表数据
-const tMeetingList = ()=>{
-  loading.value = true
-  listTMeeting(state.tableData.param).then((res:any)=>{
-    let list = res.data.Meetings??[];    
-    state.tableData.data = list;
-    state.tableData.total = res.data.Total;
-    loading.value = false
-    // console.log(state.tableData)
-  })
+const tMeetingList = () => {
+  loading.value = true;
+  // 先清空旧数据
+  state.tableData.data = [];
+  state.tableData.total = 0;
+  listTMeeting(state.tableData.param)
+    .then((res: any) => {
+      // 安全访问 res.data 及其属性
+      const data = res.data || {}; // 防止 res.data 为 null
+      const list = data.Meetings ?? [];
+      const total = data.Total ?? 0;
+
+      state.tableData.data = list;
+      state.tableData.total = total;
+      loading.value = false
+    })
+    .catch((error: any) => {
+      ElMessage.error("查询会议列表失败");
+      console.error("接口调用出错：", error);
+    })
+    .finally(() => {
+      loading.value = false;
+    });
 };
 
 const toggleSearch = () => {
@@ -392,6 +411,16 @@ const handleUpdate = (row: TMeetingTableColumns|null) => {
         }) as TMeetingTableColumns
     }
     editRef.value.openDialog(toRaw(row));
+};
+
+const handleFileList = (row: { RoomNumber: string }) => {
+    const roomNumber = row.RoomNumber;
+    if (!roomNumber) {
+      ElMessage.error('会议编号不存在');
+      return;
+    }
+    // console.log(roomNumber);
+    fileListRef.value.openDialog(roomNumber);
 };
 const handleDelete = (row: TMeetingTableColumns|null) => {
     let msg = '你确定要删除所选数据？';
